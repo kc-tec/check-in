@@ -17,7 +17,7 @@
         button:disabled { cursor: not-allowed; filter: grayscale(1); opacity: 0.5; }
     </style>
     
-    <!-- QR Library: Attempt local file first, fallback to CDN if local fails -->
+    <!-- QR Library -->
     <script src="./html5-qrcode.min.js" onerror="loadCDN()"></script>
     <script id="qr-cdn"></script>
     <script>
@@ -42,7 +42,13 @@
             </div>
             <div class="mb-6">
                 <label class="block text-sm font-medium text-gray-700">ID Number</label>
-                <input type="text" id="auth-id" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" placeholder="e.g. 1234">
+                <input type="text" 
+                       id="auth-id" 
+                       inputmode="numeric"
+                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                       class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" 
+                       placeholder="e.g. 1234">
+                <p class="text-[10px] text-gray-400 mt-1">* Digits only, no spaces or letters allowed.</p>
             </div>
             <button onclick="handleAuth()" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition">
                 CONTINUE TO SCANNER
@@ -101,14 +107,8 @@
                 </button>
             </div>
             
-            <div class="mt-6 flex flex-col space-y-3">
-                <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-sm">
-                    Request Leave
-                </button>
-                <a href="qrcode.jpg" download="qrcode.jpg" class="w-full py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-sm text-center flex items-center justify-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Download QR
-                </a>
+            <div class="mt-4 text-center">
+                <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium py-1 px-2">Request Leave / Report Late</button>
             </div>
         </div>
 
@@ -119,13 +119,16 @@
             </button>
         </div>
 
-        <!-- Leave Form Container -->
+        <!-- Leave/Late Form Container -->
         <div id="leave-form-container" class="mt-4 p-4 border border-gray-200 rounded-lg shadow-inner bg-gray-50 hidden-section">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">Leave Request</h2>
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Exception / Leave Request</h2>
             <form id="leave-form">
                 <div class="mb-3">
                     <label class="block text-sm font-medium text-gray-700">Category</label>
                     <select id="leave-type" name="type" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
+                        <option value="Late Arrival">Late Arrival</option>
+                        <option value="Early Departure">Early Departure</option>
+                        <hr>
                         <option value="Annual">Annual Leave</option>
                         <option value="Sick">Sick Leave</option>
                         <option value="Emergency">Emergency / Unpaid</option>
@@ -173,12 +176,10 @@
         const handleAuth = () => {
             const name = document.getElementById('auth-name').value.trim();
             const id = document.getElementById('auth-id').value.trim();
-
             if (!name || !id) {
                 showModal('Required', 'Please enter your Name and ID Number.');
                 return;
             }
-
             currentUser = { name, id };
             localStorage.setItem('kctec_checkin_user', JSON.stringify(currentUser));
             showApp();
@@ -189,12 +190,9 @@
             document.getElementById('app-section').classList.remove('hidden-section');
             document.getElementById('display-user-name').textContent = currentUser.name;
             document.getElementById('display-user-id').textContent = currentUser.id;
-            
-            // Set default date for leave form to today
             const todayStr = new Date().toISOString().split('T')[0];
             document.getElementById('leave-start-date').value = todayStr;
             document.getElementById('leave-end-date').value = todayStr;
-            
             updateButtonStates();
         };
 
@@ -243,11 +241,7 @@
         // --- 4. GOOGLE SHEETS SYNC ---
         const syncToSheets = async (action, data) => {
             try {
-                const payload = { 
-                    action, 
-                    ...data, 
-                    timestamp: new Date().toISOString() 
-                };
+                const payload = { action, ...data, timestamp: new Date().toISOString() };
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
@@ -274,7 +268,7 @@
                 return;
             }
             qrScanner = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: 250 };
+            const config = { fps: 15, qrbox: 250 };
             qrScanner.start({ facingMode: "environment" }, config, (text) => handleScanSuccess(text))
             .then(() => {
                 scanning = true;
@@ -295,6 +289,7 @@
                     scanning = false;
                     document.getElementById('controls-wrapper').classList.remove('hidden-section');
                     document.getElementById('cancel-control').classList.add('hidden-section');
+                    setStatus('Ready.', 'info');
                 } catch (e) { console.error(e); }
             }
         };
