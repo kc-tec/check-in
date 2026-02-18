@@ -61,7 +61,7 @@
     <div id="app-section" class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-2xl hidden-section">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-2xl font-extrabold text-indigo-700">KC-TEC Check-In</h1>
-            <button onclick="requestReset()" class="text-[10px] text-gray-400 border border-gray-200 px-2 py-1 rounded hover:bg-gray-50">Reset Device</button>
+            <button onclick="requestReset()" class="text-[10px] text-gray-400 border border-gray-200 px-2 py-1 rounded hover:bg-gray-50">Admin Reset</button>
         </div>
 		
         <div class="text-xs text-center mb-4 bg-gray-50 py-2 rounded border border-gray-100">
@@ -108,8 +108,14 @@
                 </button>
             </div>
             
-            <div class="mt-4 text-center">
-                <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium py-1 px-2">Request Leave / Report Late</button>
+            <div class="mt-6 flex flex-col space-y-2">
+                <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-sm">
+                    Request Leave
+                </button>
+                <a href="qrcode.jpg" download="qrcode.jpg" class="w-full py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-sm flex items-center justify-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Download QR
+                </a>
             </div>
         </div>
 
@@ -120,16 +126,13 @@
             </button>
         </div>
 
-        <!-- Leave/Late Form Container -->
+        <!-- Leave Form Container -->
         <div id="leave-form-container" class="mt-4 p-4 border border-gray-200 rounded-lg shadow-inner bg-gray-50 hidden-section">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">Exception / Leave Request</h2>
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Submit Leave Request</h2>
             <form id="leave-form">
                 <div class="mb-3">
                     <label class="block text-sm font-medium text-gray-700">Category</label>
                     <select id="leave-type" name="type" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
-                        <option value="Late Arrival">Late Arrival</option>
-                        <option value="Early Departure">Early Departure</option>
-                        <hr>
                         <option value="Annual">Annual Leave</option>
                         <option value="Sick">Sick Leave</option>
                         <option value="Emergency">Emergency / Unpaid</option>
@@ -155,18 +158,25 @@
         </div>
     </div>
 
-    <!-- Notification Modal -->
+    <!-- Notification Modal with Input Support -->
     <div id="custom-modal" class="modal fixed inset-0 bg-gray-900/75 flex items-center justify-center p-4 z-50 pointer-events-none opacity-0">
         <div class="bg-white rounded-xl p-6 shadow-2xl w-full max-sm transform transition-all scale-95">
             <h3 id="modal-title" class="text-xl font-bold mb-3 text-gray-800">Notification</h3>
             <p id="modal-message" class="text-gray-600 mb-4"></p>
-            <button onclick="closeModal()" class="w-full py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">OK</button>
+            <div id="modal-input-container" class="hidden mb-4">
+                <input type="password" id="modal-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" placeholder="Enter PIN">
+            </div>
+            <div class="flex space-x-2">
+                <button id="modal-cancel-btn" onclick="closeModal()" class="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium hidden">Cancel</button>
+                <button id="modal-confirm-btn" onclick="closeModal()" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">OK</button>
+            </div>
         </div>
     </div>
 
     <script>
         // --- 1. CONFIGURATION ---
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7Y_SOnkmH2N4YMpjX9d88LilJ8_2TXxpcSZTW0s68bs8Z_tkieCoBK4KAZLa4ilZIYQ/exec";
+        const ADMIN_RESET_PIN = "2520"; // Updated Admin PIN
 
         let currentUser = null;
         let qrScanner = null;
@@ -175,7 +185,6 @@
 
         // --- 2. AUTHENTICATION & DEVICE PINNING ---
         
-        // Generate a persistent unique ID for this browser if it doesn't exist
         const getDeviceId = () => {
             let id = localStorage.getItem('kctec_device_id');
             if (!id) {
@@ -195,14 +204,12 @@
                 return;
             }
 
-            // Check if this device is already "pinned" to a different ID
             const pinnedId = localStorage.getItem('kctec_pinned_id');
             if (pinnedId && pinnedId !== id) {
                 showModal('Device Restricted', `This phone is linked to ID: ${pinnedId}. You cannot submit logs for another user on this device.`);
                 return;
             }
 
-            // First time login: Pin the ID to this device
             if (!pinnedId) {
                 localStorage.setItem('kctec_pinned_id', id);
             }
@@ -223,16 +230,35 @@
             updateButtonStates();
         };
 
-        // Logout is intentionally restricted to prevent switching IDs
+        // ADMIN RESET LOGIC
         const requestReset = () => {
-            showModal('Reset Restricted', 'Device pinning is active. To switch users, please contact your supervisor to clear this device data.');
-        };
+            const title = "Admin Reset Required";
+            const message = "Please enter the supervisor PIN to unlock this device for a new user.";
+            
+            // Re-use modal for PIN entry
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-input-container').classList.remove('hidden');
+            document.getElementById('modal-cancel-btn').classList.remove('hidden');
+            document.getElementById('modal-input').value = "";
+            
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.textContent = "Reset Now";
+            confirmBtn.onclick = () => {
+                const pin = document.getElementById('modal-input').value;
+                if (pin === ADMIN_RESET_PIN) {
+                    localStorage.removeItem('kctec_pinned_id');
+                    localStorage.removeItem('kctec_checkin_user');
+                    localStorage.removeItem('kctec_last_action_data');
+                    window.location.reload();
+                } else {
+                    showModal('Incorrect PIN', 'The reset code was incorrect.');
+                }
+            };
 
-        const logout = () => {
-            // Internal use only - normally not accessible by users via UI
-            localStorage.removeItem('kctec_checkin_user');
-            localStorage.removeItem('kctec_last_action_data');
-            window.location.reload();
+            const m = document.getElementById('custom-modal');
+            m.classList.remove('opacity-0', 'pointer-events-none');
+            m.querySelector('div').classList.remove('scale-95');
         };
 
         // --- 3. SEQUENCE LOGIC ---
@@ -274,12 +300,7 @@
         // --- 4. GOOGLE SHEETS SYNC ---
         const syncToSheets = async (action, data) => {
             try {
-                const payload = { 
-                    action, 
-                    ...data, 
-                    deviceId: currentUser.deviceId, // Send Device ID for admin checking
-                    timestamp: new Date().toISOString() 
-                };
+                const payload = { action, ...data, deviceId: currentUser.deviceId, timestamp: new Date().toISOString() };
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
@@ -335,7 +356,6 @@
         const handleScanSuccess = async (text) => {
             await stopScan();
             toggleLoading(true);
-
             const parts = text.split('|');
             if (parts.length < 4) {
                 toggleLoading(false);
@@ -343,9 +363,7 @@
                 updateButtonStates();
                 return;
             }
-
             const qr = { storeId: parts[0], lat: parseFloat(parts[1]), lon: parseFloat(parts[2]), radius: parseInt(parts[3]) };
-
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, qr.lat, qr.lon);
                 if (dist > qr.radius) {
@@ -354,15 +372,7 @@
                     updateButtonStates();
                     return;
                 }
-
-                const payload = {
-                    staffId: currentUser.id,
-                    staffName: currentUser.name,
-                    storeId: qr.storeId,
-                    type: currentAction,
-                    dist: Math.round(dist)
-                };
-
+                const payload = { staffId: currentUser.id, staffName: currentUser.name, storeId: qr.storeId, type: currentAction, dist: Math.round(dist) };
                 await syncToSheets('log_entry', payload);
                 saveSessionProgress(currentAction);
                 toggleLoading(false);
@@ -390,9 +400,16 @@
             el.className = `text-sm font-medium ${type === 'error' ? 'text-red-600' : type === 'success' ? 'text-green-600' : 'text-blue-600'}`;
         };
 
-        const showModal = (title, msg) => {
+        const showModal = (title, message) => {
             document.getElementById('modal-title').textContent = title;
-            document.getElementById('modal-message').textContent = msg;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-input-container').classList.add('hidden');
+            document.getElementById('modal-cancel-btn').classList.add('hidden');
+            
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.textContent = "OK";
+            confirmBtn.onclick = closeModal;
+
             const m = document.getElementById('custom-modal');
             m.classList.remove('opacity-0', 'pointer-events-none');
             m.querySelector('div').classList.remove('scale-95');
@@ -416,16 +433,7 @@
             const btn = document.getElementById('submit-leave-btn');
             btn.disabled = true;
             btn.textContent = "Submitting...";
-            
-            const payload = {
-                staffId: currentUser.id,
-                staffName: currentUser.name,
-                type: document.getElementById('leave-type').value,
-                start: document.getElementById('leave-start-date').value,
-                end: document.getElementById('leave-end-date').value,
-                reason: document.getElementById('leave-reason').value
-            };
-
+            const payload = { staffId: currentUser.id, staffName: currentUser.name, type: document.getElementById('leave-type').value, start: document.getElementById('leave-start-date').value, end: document.getElementById('leave-end-date').value, reason: document.getElementById('leave-reason').value };
             await syncToSheets('leave_request', payload);
             btn.disabled = false;
             btn.textContent = "Submit to Sheet";
