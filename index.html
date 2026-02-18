@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SM Check-In (Sheets DB)</title>
+    <title>KC-TEC Check-In (Session Sync)</title>
     
     <link rel="icon" type="image/png" href="./fav.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./fav.png">
@@ -13,6 +13,8 @@
         #reader { width: 100%; max-width: 400px; margin: 20px auto; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
         .modal { transition: opacity 0.3s ease-in-out; }
         .hidden-section { display: none; }
+        /* Style for disabled buttons to make sequence logic clear */
+        button:disabled { cursor: not-allowed; filter: grayscale(1); opacity: 0.5; }
     </style>
     
     <!-- QR Library: Attempt local file first, fallback to CDN if local fails -->
@@ -31,22 +33,16 @@
 
     <!-- === AUTH SECTION === -->
     <div id="auth-section" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-2xl">
-        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6">Staff Access</h1>
+        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6">User Access</h1>
         
         <div id="login-form">
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700">Full Name</label>
-                <input type="text" id="auth-name" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" placeholder="e.g. John Doe">
+                <input type="text" id="auth-name" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" placeholder="e.g. San Dara">
             </div>
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-700">Phone Number</label>
-                <input type="text" 
-                       id="auth-id" 
-                       inputmode="numeric"
-                       oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                       class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" 
-                       placeholder="e.g. 0123456789">
-                <p class="text-[10px] text-gray-400 mt-1">* Digits only, no spaces or letters allowed.</p>
+                <label class="block text-sm font-medium text-gray-700">ID Number</label>
+                <input type="text" id="auth-id" class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" placeholder="e.g. 1234">
             </div>
             <button onclick="handleAuth()" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition">
                 CONTINUE TO SCANNER
@@ -58,12 +54,12 @@
     <!-- === MAIN APP SECTION === -->
     <div id="app-section" class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-2xl hidden-section">
         <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-extrabold text-indigo-700">SM Check-In</h1>
+            <h1 class="text-2xl font-extrabold text-indigo-700">KC-TEC Check-In</h1>
             <button onclick="logout()" class="text-xs text-red-500 hover:underline">Switch User</button>
         </div>
 		
         <div class="text-xs text-center mb-4 bg-gray-50 py-2 rounded">
-            Logged in as: <span id="display-user-name" class="font-bold">...</span> 
+            Logged in: <span id="display-user-name" class="font-bold">...</span> 
             (<span id="display-user-id" class="text-gray-500 italic">...</span>)
         </div>
 
@@ -77,30 +73,46 @@
         </div>
 
         <div id="result-status" class="mt-4 p-3 rounded-lg bg-gray-50 border border-gray-200 text-center">
-            <p id="status-message" class="text-sm font-medium text-gray-600">Please select an action below.</p>
+            <p id="status-message" class="text-sm font-medium text-gray-600">Please select a session below.</p>
         </div>
 
-        <!-- Action Buttons & Leave Link (Hides during scan) -->
+        <!-- Action Buttons: 4 Session Buttons -->
         <div id="controls-wrapper" class="mt-6">
-            <div id="main-controls" class="flex space-x-4">
-                <button id="check-in-btn" 
-                        onclick="initiateScan('IN')" 
-                        class="flex-1 px-4 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition">
-                    Check-In
+            <div id="main-controls" class="grid grid-cols-2 gap-3">
+                <button id="am-in-btn" onclick="initiateScan('AM-IN')" class="px-4 py-4 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition flex flex-col items-center">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                    <span class="text-[10px] uppercase opacity-80">Morning</span>
+                    <span>AM In</span>
                 </button>
-                <button id="check-out-btn" 
-                        onclick="initiateScan('OUT')" 
-                        class="flex-1 px-4 py-3 bg-orange-600 text-white font-semibold rounded-lg shadow-md hover:bg-orange-700 transition">
-                    Check-Out
+                <button id="am-out-btn" onclick="initiateScan('AM-OUT')" class="px-4 py-4 bg-orange-500 text-white font-bold rounded-lg shadow-md hover:bg-orange-600 transition flex flex-col items-center">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                    <span class="text-[10px] uppercase opacity-80">Morning</span>
+                    <span>AM Out</span>
+                </button>
+                <button id="pm-in-btn" onclick="initiateScan('PM-IN')" class="px-4 py-4 bg-indigo-800 text-white font-bold rounded-lg shadow-md hover:bg-indigo-900 transition flex flex-col items-center">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                    <span class="text-[10px] uppercase opacity-80">Afternoon</span>
+                    <span>PM In</span>
+                </button>
+                <button id="pm-out-btn" onclick="initiateScan('PM-OUT')" class="px-4 py-4 bg-orange-700 text-white font-bold rounded-lg shadow-md hover:bg-orange-800 transition flex flex-col items-center">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
+                    <span class="text-[10px] uppercase opacity-80">Afternoon</span>
+                    <span>PM Out</span>
                 </button>
             </div>
             
-            <div class="mt-4 text-center">
-                <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium py-1 px-2">Request Leave</button>
+            <div class="mt-6 flex flex-col space-y-3">
+                <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-sm">
+                    Request Leave
+                </button>
+                <a href="qrcode.jpg" download="qrcode.jpg" class="w-full py-2 bg-indigo-50 text-indigo-600 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-sm text-center flex items-center justify-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Download QR
+                </a>
             </div>
         </div>
 
-        <!-- Cancel Scan Button (Shows only during scan) -->
+        <!-- Cancel Scan Button -->
         <div id="cancel-control" class="mt-6 hidden-section">
             <button onclick="stopScan()" class="w-full px-4 py-3 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition">
                 Cancel / Stop Scanner
@@ -109,14 +121,15 @@
 
         <!-- Leave Form Container -->
         <div id="leave-form-container" class="mt-4 p-4 border border-gray-200 rounded-lg shadow-inner bg-gray-50 hidden-section">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">Submit Leave Request</h2>
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">Leave Request</h2>
             <form id="leave-form">
                 <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700">Leave Type</label>
+                    <label class="block text-sm font-medium text-gray-700">Category</label>
                     <select id="leave-type" name="type" required class="mt-1 w-full p-2 border border-gray-300 rounded-md">
                         <option value="Annual">Annual Leave</option>
                         <option value="Sick">Sick Leave</option>
-                        <option value="Emergency">Emergency/Unpaid</option>
+                        <option value="Emergency">Emergency / Unpaid</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div class="flex space-x-3 mb-3">
@@ -130,10 +143,10 @@
                     </div>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700">Reason</label>
-                    <textarea id="leave-reason" rows="3" required class="mt-1 w-full p-2 border border-gray-300 rounded-md"></textarea>
+                    <label class="block text-sm font-medium text-gray-700">Reason / Note</label>
+                    <textarea id="leave-reason" rows="3" required class="mt-1 w-full p-2 border border-gray-300 rounded-md" placeholder="Provide details here..."></textarea>
                 </div>
-                <button type="submit" id="submit-leave-btn" class="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">Submit Request</button>
+                <button type="submit" id="submit-leave-btn" class="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">Submit to Sheet</button>
             </form>
         </div>
     </div>
@@ -149,12 +162,12 @@
 
     <script>
         // --- 1. CONFIGURATION ---
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZ0m8VGbs58WXTIFp-uGEv6rRtksT6aHHuIGPoxIDh47f9SDdGsnCFh66PzUY4m9o/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7Y_SOnkmH2N4YMpjX9d88LilJ8_2TXxpcSZTW0s68bs8Z_tkieCoBK4KAZLa4ilZIYQ/exec";
 
         let currentUser = null;
         let qrScanner = null;
         let scanning = false;
-        let currentAction = 'IN';
+        let currentAction = 'AM-IN';
 
         // --- 2. AUTHENTICATION LOGIC ---
         const handleAuth = () => {
@@ -162,17 +175,12 @@
             const id = document.getElementById('auth-id').value.trim();
 
             if (!name || !id) {
-                showModal('Required', 'Please enter your Full Name and Phone Number.');
-                return;
-            }
-
-            if (!/^\d+$/.test(id)) {
-                showModal('Invalid Input', 'Phone number must contain only digits.');
+                showModal('Required', 'Please enter your Name and ID Number.');
                 return;
             }
 
             currentUser = { name, id };
-            localStorage.setItem('sm_checkin_user', JSON.stringify(currentUser));
+            localStorage.setItem('kctec_checkin_user', JSON.stringify(currentUser));
             showApp();
         };
 
@@ -181,21 +189,70 @@
             document.getElementById('app-section').classList.remove('hidden-section');
             document.getElementById('display-user-name').textContent = currentUser.name;
             document.getElementById('display-user-id').textContent = currentUser.id;
+            
+            // Set default date for leave form to today
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('leave-start-date').value = todayStr;
+            document.getElementById('leave-end-date').value = todayStr;
+            
+            updateButtonStates();
         };
 
         const logout = () => {
-            localStorage.removeItem('sm_checkin_user');
+            localStorage.removeItem('kctec_checkin_user');
+            localStorage.removeItem('kctec_last_action_data');
             window.location.reload();
         };
 
-        // --- 3. GOOGLE SHEETS SYNC ---
+        // --- 3. SEQUENCE LOGIC ---
+        const updateButtonStates = () => {
+            const stateData = JSON.parse(localStorage.getItem('kctec_last_action_data') || '{}');
+            const today = new Date().toISOString().split('T')[0];
+            let lastAction = (stateData.date === today) ? stateData.action : 'NONE';
+
+            const btnAmIn = document.getElementById('am-in-btn');
+            const btnAmOut = document.getElementById('am-out-btn');
+            const btnPmIn = document.getElementById('pm-in-btn');
+            const btnPmOut = document.getElementById('pm-out-btn');
+
+            btnAmIn.disabled = btnAmOut.disabled = btnPmIn.disabled = btnPmOut.disabled = true;
+
+            if (lastAction === 'NONE') {
+                btnAmIn.disabled = false;
+                setStatus('Ready for Morning Check-In.', 'info');
+            } else if (lastAction === 'AM-IN') {
+                btnAmOut.disabled = false;
+                setStatus('Morning session active. Please AM Out when finished.', 'info');
+            } else if (lastAction === 'AM-OUT') {
+                btnPmIn.disabled = false;
+                setStatus('Ready for Afternoon Check-In.', 'info');
+            } else if (lastAction === 'PM-IN') {
+                btnPmOut.disabled = false;
+                setStatus('Afternoon session active. Please PM Out when finished.', 'info');
+            } else if (lastAction === 'PM-OUT') {
+                setStatus('All sessions complete for today.', 'success');
+            }
+        };
+
+        const saveSessionProgress = (action) => {
+            const today = new Date().toISOString().split('T')[0];
+            localStorage.setItem('kctec_last_action_data', JSON.stringify({ action, date: today }));
+            updateButtonStates();
+        };
+
+        // --- 4. GOOGLE SHEETS SYNC ---
         const syncToSheets = async (action, data) => {
             try {
+                const payload = { 
+                    action, 
+                    ...data, 
+                    timestamp: new Date().toISOString() 
+                };
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action, ...data, timestamp: new Date().toISOString() })
+                    body: JSON.stringify(payload)
                 });
                 return { success: true };
             } catch (e) {
@@ -204,7 +261,7 @@
             }
         };
 
-        // --- 4. SCANNER LOGIC ---
+        // --- 5. SCANNER LOGIC ---
         const initiateScan = (action) => {
             currentAction = action;
             startScan();
@@ -212,27 +269,22 @@
 
         const startScan = () => {
             if (scanning) return;
-            
             if (typeof Html5Qrcode === 'undefined') {
-                setStatus('Scanning library not ready. Check internet or local file.', 'error');
+                setStatus('Scanner library missing.', 'error');
                 return;
             }
-
             qrScanner = new Html5Qrcode("reader");
             const config = { fps: 10, qrbox: 250 };
-
             qrScanner.start({ facingMode: "environment" }, config, (text) => handleScanSuccess(text))
             .then(() => {
                 scanning = true;
-                // Hide all standard buttons and leave request section
                 document.getElementById('controls-wrapper').classList.add('hidden-section');
                 document.getElementById('leave-form-container').classList.add('hidden-section');
-                // Show only the cancel button
                 document.getElementById('cancel-control').classList.remove('hidden-section');
                 setStatus(`Scanning for ${currentAction}...`, 'info');
             }).catch(err => {
                 console.error(err);
-                setStatus('Camera Access Required', 'error');
+                setStatus('Camera access denied.', 'error');
             });
         };
 
@@ -241,11 +293,8 @@
                 try {
                     await qrScanner.stop();
                     scanning = false;
-                    // Show standard controls again
                     document.getElementById('controls-wrapper').classList.remove('hidden-section');
-                    // Hide cancel button
                     document.getElementById('cancel-control').classList.add('hidden-section');
-                    setStatus('Ready.', 'info');
                 } catch (e) { console.error(e); }
             }
         };
@@ -257,23 +306,19 @@
             const parts = text.split('|');
             if (parts.length < 4) {
                 toggleLoading(false);
-                showModal('Error', 'Invalid QR Format.');
+                showModal('Error', 'Invalid QR Code format.');
+                updateButtonStates();
                 return;
             }
 
-            const qr = { 
-                storeId: parts[0], 
-                lat: parseFloat(parts[1]), 
-                lon: parseFloat(parts[2]), 
-                radius: parseInt(parts[3]) 
-            };
+            const qr = { storeId: parts[0], lat: parseFloat(parts[1]), lon: parseFloat(parts[2]), radius: parseInt(parts[3]) };
 
             navigator.geolocation.getCurrentPosition(async (pos) => {
                 const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, qr.lat, qr.lon);
-                
                 if (dist > qr.radius) {
                     toggleLoading(false);
-                    showModal('Out of Range', `You are ${Math.round(dist)}m away from Store ${qr.storeId}. The limit is ${qr.radius}m.`);
+                    showModal('Out of Range', `Too far from Store ${qr.storeId} (${Math.round(dist)}m). Limit is ${qr.radius}m.`);
+                    updateButtonStates();
                     return;
                 }
 
@@ -286,16 +331,18 @@
                 };
 
                 await syncToSheets('log_entry', payload);
+                saveSessionProgress(currentAction);
                 toggleLoading(false);
                 showModal('Success', `${currentAction} logged for Store ${qr.storeId} successfully.`);
-                setStatus(`${currentAction} complete at ${new Date().toLocaleTimeString()}`, 'success');
+                setStatus(`${currentAction} completed.`, 'success');
             }, (err) => {
                 toggleLoading(false);
-                showModal('Location Error', 'Unable to retrieve location. Please ensure GPS is enabled.');
+                showModal('GPS Error', 'Please enable location services.');
+                updateButtonStates();
             }, { enableHighAccuracy: true });
         };
 
-        // --- 5. UTILS ---
+        // --- 6. UTILS ---
         const haversineDistance = (lat1, lon1, lat2, lon2) => {
             const R = 6371e3;
             const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
@@ -348,14 +395,14 @@
 
             await syncToSheets('leave_request', payload);
             btn.disabled = false;
-            btn.textContent = "Submit Request";
-            showModal('Submitted', 'Your leave request has been sent to the database.');
+            btn.textContent = "Submit to Sheet";
+            showModal('Submitted', 'Your record has been updated in the spreadsheet.');
             toggleLeaveForm();
             e.target.reset();
         });
 
         window.onload = () => {
-            const saved = localStorage.getItem('sm_checkin_user');
+            const saved = localStorage.getItem('kctec_checkin_user');
             if (saved) {
                 currentUser = JSON.parse(saved);
                 showApp();
