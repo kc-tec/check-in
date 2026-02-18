@@ -13,7 +13,6 @@
         #reader { width: 100%; max-width: 400px; margin: 20px auto; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
         .modal { transition: opacity 0.3s ease-in-out; }
         .hidden-section { display: none; }
-        /* Style for disabled buttons to make sequence logic clear */
         button:disabled { cursor: not-allowed; filter: grayscale(1); opacity: 0.5; }
     </style>
     
@@ -33,7 +32,8 @@
 
     <!-- === AUTH SECTION === -->
     <div id="auth-section" class="max-w-md mx-auto bg-white p-8 rounded-xl shadow-2xl">
-        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-6">User Access</h1>
+        <h1 class="text-3xl font-bold text-center text-indigo-700 mb-2">User Access</h1>
+        <p class="text-center text-xs text-gray-500 mb-6 font-medium uppercase tracking-wider">Device Verification Active</p>
         
         <div id="login-form">
             <div class="mb-4">
@@ -48,12 +48,12 @@
                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                        class="mt-1 w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" 
                        placeholder="e.g. 1234">
-                <p class="text-[10px] text-gray-400 mt-1">* Digits only, no spaces or letters allowed.</p>
+                <p class="text-[10px] text-gray-400 mt-1">* Digits only. This ID will be locked to this device.</p>
             </div>
             <button onclick="handleAuth()" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition">
-                CONTINUE TO SCANNER
+                VERIFY & CONTINUE
             </button>
-            <p class="text-xs text-gray-400 mt-4 text-center">Your details are saved locally for future check-ins.</p>
+            <p class="text-[10px] text-gray-400 mt-4 text-center">To prevent fraud, your ID is linked to your hardware fingerprint.</p>
         </div>
     </div>
 
@@ -61,11 +61,12 @@
     <div id="app-section" class="max-w-xl mx-auto bg-white p-6 rounded-xl shadow-2xl hidden-section">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-2xl font-extrabold text-indigo-700">KC-TEC Check-In</h1>
-            <button onclick="logout()" class="text-xs text-red-500 hover:underline">Switch User</button>
+            <button onclick="requestReset()" class="text-[10px] text-gray-400 border border-gray-200 px-2 py-1 rounded hover:bg-gray-50">Reset Device</button>
         </div>
 		
-        <div class="text-xs text-center mb-4 bg-gray-50 py-2 rounded">
-            Logged in: <span id="display-user-name" class="font-bold">...</span> 
+        <div class="text-xs text-center mb-4 bg-gray-50 py-2 rounded border border-gray-100">
+            <span class="text-gray-400 uppercase text-[9px] block">Verified User</span>
+            <span id="display-user-name" class="font-bold text-indigo-900">...</span> 
             (<span id="display-user-id" class="text-gray-500 italic">...</span>)
         </div>
 
@@ -172,15 +173,41 @@
         let scanning = false;
         let currentAction = 'AM-IN';
 
-        // --- 2. AUTHENTICATION LOGIC ---
+        // --- 2. AUTHENTICATION & DEVICE PINNING ---
+        
+        // Generate a persistent unique ID for this browser if it doesn't exist
+        const getDeviceId = () => {
+            let id = localStorage.getItem('kctec_device_id');
+            if (!id) {
+                id = 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase() + '-' + Date.now();
+                localStorage.setItem('kctec_device_id', id);
+            }
+            return id;
+        };
+
         const handleAuth = () => {
             const name = document.getElementById('auth-name').value.trim();
             const id = document.getElementById('auth-id').value.trim();
+            const deviceId = getDeviceId();
+
             if (!name || !id) {
                 showModal('Required', 'Please enter your Name and ID Number.');
                 return;
             }
-            currentUser = { name, id };
+
+            // Check if this device is already "pinned" to a different ID
+            const pinnedId = localStorage.getItem('kctec_pinned_id');
+            if (pinnedId && pinnedId !== id) {
+                showModal('Device Restricted', `This phone is linked to ID: ${pinnedId}. You cannot submit logs for another user on this device.`);
+                return;
+            }
+
+            // First time login: Pin the ID to this device
+            if (!pinnedId) {
+                localStorage.setItem('kctec_pinned_id', id);
+            }
+
+            currentUser = { name, id, deviceId };
             localStorage.setItem('kctec_checkin_user', JSON.stringify(currentUser));
             showApp();
         };
@@ -196,7 +223,13 @@
             updateButtonStates();
         };
 
+        // Logout is intentionally restricted to prevent switching IDs
+        const requestReset = () => {
+            showModal('Reset Restricted', 'Device pinning is active. To switch users, please contact your supervisor to clear this device data.');
+        };
+
         const logout = () => {
+            // Internal use only - normally not accessible by users via UI
             localStorage.removeItem('kctec_checkin_user');
             localStorage.removeItem('kctec_last_action_data');
             window.location.reload();
@@ -241,7 +274,12 @@
         // --- 4. GOOGLE SHEETS SYNC ---
         const syncToSheets = async (action, data) => {
             try {
-                const payload = { action, ...data, timestamp: new Date().toISOString() };
+                const payload = { 
+                    action, 
+                    ...data, 
+                    deviceId: currentUser.deviceId, // Send Device ID for admin checking
+                    timestamp: new Date().toISOString() 
+                };
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
                     mode: 'no-cors', 
