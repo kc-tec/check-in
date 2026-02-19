@@ -161,7 +161,6 @@
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                             View QR
                         </button>
-                        <!-- CHANGE: Download QR replaced with Skip Scan -->
                         <button id="skip-scan-btn" onclick="confirmSkip()" class="py-2 bg-red-50 text-red-600 font-bold rounded-lg border border-red-200 hover:bg-red-100 transition text-xs flex items-center justify-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
                             Skip Scan
@@ -213,8 +212,8 @@
             <h3 id="modal-title" class="text-xl font-bold mb-3 text-gray-800">Notification</h3>
             <p id="modal-message" class="text-gray-600 mb-4 text-sm"></p>
             
-            <div id="modal-image-container" class="hidden mb-4 overflow-hidden rounded-lg">
-                <img id="modal-qr-img" src="qrcode.jpg" class="w-full h-auto" alt="QR Code">
+            <div id="modal-image-container" class="hidden mb-4 overflow-hidden rounded-lg text-center">
+                <img id="modal-qr-img" src="qrcode.jpg" class="w-full h-auto mx-auto" alt="QR Code" onerror="this.src='https://placehold.co/400x400?text=QR+Image+Missing'">
             </div>
 
             <div id="modal-input-container" class="hidden mb-4">
@@ -320,9 +319,7 @@
             updateUI(); 
         };
 
-        // --- NEW: SKIP SCAN LOGIC ---
         const confirmSkip = () => {
-            // Find current active session
             let activeAction = 'AM-IN';
             const stateData = JSON.parse(localStorage.getItem('kctec_daily_state') || '{}');
             const history = stateData.history || {};
@@ -330,22 +327,16 @@
             for(let key of sequence) {
                 if(!history[key]) { activeAction = key; break; }
             }
-            
-            if(Object.keys(history).length >= 4) {
-                showModal('Finished', 'All sessions are already complete.');
-                return;
-            }
+            if(Object.keys(history).length >= 4) { showModal('Finished', 'All sessions are complete.'); return; }
 
             document.getElementById('modal-title').textContent = "Skip " + activeAction.replace('-',' ');
-            document.getElementById('modal-message').textContent = "Are you sure you want to skip this session? This will be recorded as 'SKIPPED'.";
+            document.getElementById('modal-message').textContent = "Record this session as 'SKIPPED'?";
             document.getElementById('modal-input-container').classList.add('hidden');
             document.getElementById('modal-image-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.remove('hidden');
-            
             const confirmBtn = document.getElementById('modal-confirm-btn');
             confirmBtn.textContent = "Yes, Skip";
             confirmBtn.onclick = () => performSkip(activeAction);
-
             const m = document.getElementById('custom-modal');
             m.classList.remove('opacity-0', 'pointer-events-none');
             m.querySelector('div').classList.remove('scale-95');
@@ -354,13 +345,18 @@
         const performSkip = async (action) => {
             closeModal();
             toggleLoading(true);
-            const res = await syncToSheets('log_entry', { staffId: currentUser.id, staffName: currentUser.name, type: action + " (SKIPPED)", dist: 0 });
-            toggleLoading(true); // Ensure stays shown until update
+            const res = await syncToSheets('log_entry', { 
+                staffId: currentUser.id, 
+                staffName: currentUser.name, 
+                storeId: "SKIPPED", 
+                type: action + " (SKIPPED)", 
+                dist: 0 
+            });
             if (res.success) {
-                saveProgress(action, " (S)"); // (S) for skipped
+                saveProgress(action, " (S)");
                 showModal('Skipped', `Session ${action} has been skipped.`);
             } else {
-                showModal('Sync Error', 'Could not skip session. Please check connection.');
+                showModal('Sync Error', 'Could not skip. Check connection.');
             }
             toggleLoading(false);
         };
@@ -393,17 +389,33 @@
         const stopScan = async () => {
             if (qrScanner && scanning) { await qrScanner.stop(); scanning = false; document.getElementById('controls-wrapper').classList.remove('hidden-section'); document.getElementById('cancel-control').classList.add('hidden-section'); }
         };
+
         const handleScanSuccess = async (text) => {
             await stopScan();
             toggleLoading(true);
             try {
                 const parts = text.split('|');
                 if (parts.length < 4) throw new Error('Invalid QR');
-                const qr = { lat: parseFloat(parts[1]), lon: parseFloat(parts[2]), radius: parseInt(parts[3]) };
+                const qr = { 
+                    storeId: parts[0], // Store ID from QR code
+                    lat: parseFloat(parts[1]), 
+                    lon: parseFloat(parts[2]), 
+                    radius: parseInt(parts[3]) 
+                };
+                
                 navigator.geolocation.getCurrentPosition(async (pos) => {
                     const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, qr.lat, qr.lon);
                     if (dist > qr.radius) { toggleLoading(false); showModal('Out of Range', `Dist: ${Math.round(dist)}m. Limit: ${qr.radius}m.`); return; }
-                    const res = await syncToSheets('log_entry', { staffId: currentUser.id, staffName: currentUser.name, type: currentAction, dist: Math.round(dist) });
+                    
+                    // FIXED: Now passing qr.storeId in the payload
+                    const res = await syncToSheets('log_entry', { 
+                        staffId: currentUser.id, 
+                        staffName: currentUser.name, 
+                        storeId: qr.storeId, 
+                        type: currentAction, 
+                        dist: Math.round(dist) 
+                    });
+                    
                     toggleLoading(false);
                     if (res.success) { saveProgress(currentAction); showModal('Success', `${currentAction} saved.`); }
                     else { showModal('Sync Error', 'Try again.'); }
