@@ -153,8 +153,14 @@
                         <span>PM Out</span>
                     </button>
                 </div>
-                <div class="mt-6">
+                <div class="mt-6 flex flex-col space-y-2">
                     <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-xs">Request Leave</button>
+                    
+                    <!-- NEW: Download QR Button -->
+                    <a href="qrcode.jpg" download="qrcode.jpg" class="w-full py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-xs flex items-center justify-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Download QR
+                    </a>
                 </div>
             </div>
         </div>
