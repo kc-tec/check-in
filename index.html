@@ -156,11 +156,18 @@
                 <div class="mt-6 flex flex-col space-y-2">
                     <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-xs">Request Leave</button>
                     
-                    <!-- NEW: Download QR Button -->
-                    <a href="qrcode.jpg" download="qrcode.jpg" class="w-full py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-xs flex items-center justify-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                        Download QR
-                    </a>
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- NEW: View QR Button -->
+                        <button onclick="viewQR()" class="py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-xs flex items-center justify-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            View QR
+                        </button>
+                        <!-- Download QR Button -->
+                        <a href="qrcode.jpg" download="qrcode.jpg" class="py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-xs flex items-center justify-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                            Download QR
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -206,6 +213,12 @@
         <div class="bg-white rounded-xl p-6 shadow-2xl w-full max-w-xs transform transition-all scale-95">
             <h3 id="modal-title" class="text-xl font-bold mb-3 text-gray-800">Notification</h3>
             <p id="modal-message" class="text-gray-600 mb-4 text-sm"></p>
+            
+            <!-- View QR Image Container -->
+            <div id="modal-image-container" class="hidden mb-4 overflow-hidden rounded-lg">
+                <img id="modal-qr-img" src="qrcode.jpg" class="w-full h-auto shadow-sm border border-gray-100" alt="QR Code">
+            </div>
+
             <div id="modal-input-container" class="hidden mb-4">
                 <input type="password" id="modal-input" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Enter PIN">
             </div>
@@ -319,7 +332,6 @@
             const today = getLocalDate();
             let stateData = JSON.parse(localStorage.getItem('kctec_daily_state') || '{}');
             
-            // Format time with AM/PM
             const timeStr = new Date().toLocaleTimeString('en-US', { 
                 hour: 'numeric', 
                 minute: '2-digit', 
@@ -422,6 +434,7 @@
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-message').textContent = message;
             document.getElementById('modal-input-container').classList.add('hidden');
+            document.getElementById('modal-image-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.add('hidden');
             const confirmBtn = document.getElementById('modal-confirm-btn');
             confirmBtn.textContent = "OK";
@@ -437,6 +450,20 @@
             m.querySelector('div').classList.add('scale-95');
         };
 
+        const viewQR = () => {
+            document.getElementById('modal-title').textContent = "KC-TEC Check-In QR";
+            document.getElementById('modal-message').textContent = "";
+            document.getElementById('modal-input-container').classList.add('hidden');
+            document.getElementById('modal-image-container').classList.remove('hidden');
+            document.getElementById('modal-cancel-btn').classList.add('hidden');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.textContent = "Close";
+            confirmBtn.onclick = closeModal;
+            const m = document.getElementById('custom-modal');
+            m.classList.remove('opacity-0', 'pointer-events-none');
+            m.querySelector('div').classList.remove('scale-95');
+        };
+
         const toggleLoading = (show) => document.getElementById('loading-spinner').classList.toggle('hidden', !show);
         const toggleLeaveForm = () => document.getElementById('leave-form-container').classList.toggle('hidden-section');
 
@@ -444,6 +471,7 @@
             document.getElementById('modal-title').textContent = "Admin Reset";
             document.getElementById('modal-message').textContent = "Enter supervisor PIN:";
             document.getElementById('modal-input-container').classList.remove('hidden');
+            document.getElementById('modal-image-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.remove('hidden');
             document.getElementById('modal-input').value = "";
             const confirmBtn = document.getElementById('modal-confirm-btn');
