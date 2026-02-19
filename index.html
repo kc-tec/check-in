@@ -20,7 +20,7 @@
         .progress-segment.done { display: flex; align-items: center; justify-content: center; color: white; border: none; }
         .progress-bg { background-color: #e5e7eb; }
         
-        /* Matching colors to reference image */
+        /* Colors */
         .color-am-in { background-color: #f59e0b !important; }  /* Orange */
         .color-am-out { background-color: #3b82f6 !important; } /* Blue */
         .color-pm-in { background-color: #a855f7 !important; }  /* Purple */
@@ -157,16 +157,15 @@
                     <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-xs">Request Leave</button>
                     
                     <div class="grid grid-cols-2 gap-2">
-                        <!-- NEW: View QR Button -->
                         <button onclick="viewQR()" class="py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-xs flex items-center justify-center">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                             View QR
                         </button>
-                        <!-- Download QR Button -->
-                        <a href="qrcode.jpg" download="qrcode.jpg" class="py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-xs flex items-center justify-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Download QR
-                        </a>
+                        <!-- CHANGE: Download QR replaced with Skip Scan -->
+                        <button id="skip-scan-btn" onclick="confirmSkip()" class="py-2 bg-red-50 text-red-600 font-bold rounded-lg border border-red-200 hover:bg-red-100 transition text-xs flex items-center justify-center">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                            Skip Scan
+                        </button>
                     </div>
                 </div>
             </div>
@@ -176,7 +175,7 @@
             <button onclick="stopScan()" class="w-full px-4 py-3 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition">Cancel / Stop Scanner</button>
         </div>
 
-        <!-- Leave Form Container -->
+        <!-- Leave Form -->
         <div id="leave-form-container" class="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50 hidden-section">
             <h2 class="text-lg font-semibold text-gray-700 mb-4">Leave Request</h2>
             <form id="leave-form">
@@ -203,7 +202,7 @@
                     <label class="block text-sm font-medium text-gray-700">Reason</label>
                     <textarea id="leave-reason" rows="3" required class="mt-1 w-full p-2 border border-gray-300 rounded-md text-sm"></textarea>
                 </div>
-                <button type="submit" id="submit-leave-btn" class="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 text-sm">Submit to Sheet</button>
+                <button type="submit" id="submit-leave-btn" class="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 text-sm">Submit Request</button>
             </form>
         </div>
     </div>
@@ -214,9 +213,8 @@
             <h3 id="modal-title" class="text-xl font-bold mb-3 text-gray-800">Notification</h3>
             <p id="modal-message" class="text-gray-600 mb-4 text-sm"></p>
             
-            <!-- View QR Image Container -->
             <div id="modal-image-container" class="hidden mb-4 overflow-hidden rounded-lg">
-                <img id="modal-qr-img" src="qrcode.jpg" class="w-full h-auto shadow-sm border border-gray-100" alt="QR Code">
+                <img id="modal-qr-img" src="qrcode.jpg" class="w-full h-auto" alt="QR Code">
             </div>
 
             <div id="modal-input-container" class="hidden mb-4">
@@ -265,27 +263,22 @@
         const showApp = () => {
             document.getElementById('auth-section').classList.add('hidden-section');
             document.getElementById('app-section').classList.remove('hidden-section');
-            
             const nameEl = document.getElementById('display-user-name');
             const idEl = document.getElementById('display-user-id');
             const dateEl = document.getElementById('current-date-display');
-            
             if (nameEl) nameEl.textContent = currentUser.name;
             if (idEl) idEl.textContent = currentUser.id;
             if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            
             updateUI();
         };
 
         const updateUI = () => {
             const today = getLocalDate();
             let stateData = JSON.parse(localStorage.getItem('kctec_daily_state') || '{}');
-
             if (stateData.date !== today) {
                 stateData = { date: today, history: {} };
                 localStorage.setItem('kctec_daily_state', JSON.stringify(stateData));
             }
-
             const history = stateData.history || {};
             const sequence = ['AM-IN', 'AM-OUT', 'PM-IN', 'PM-OUT'];
             let lastCompleted = 'NONE';
@@ -295,7 +288,6 @@
                 const bar = document.getElementById(`bar-${key}`);
                 const timeEl = document.getElementById(`time-${key}`);
                 const cssKey = key.toLowerCase();
-                
                 if (history[key]) {
                     bar.className = `progress-segment done color-${cssKey}`;
                     bar.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"/></svg>`;
@@ -308,40 +300,69 @@
                     timeEl.textContent = '--:-- --';
                 }
             });
-
             document.getElementById('progress-fraction').textContent = `${completedCount}/4`;
-
-            const btns = {
-                'AM-IN': document.getElementById('am-in-btn'),
-                'AM-OUT': document.getElementById('am-out-btn'),
-                'PM-IN': document.getElementById('pm-in-btn'),
-                'PM-OUT': document.getElementById('pm-out-btn')
-            };
-
+            const btns = { 'AM-IN': document.getElementById('am-in-btn'), 'AM-OUT': document.getElementById('am-out-btn'), 'PM-IN': document.getElementById('pm-in-btn'), 'PM-OUT': document.getElementById('pm-out-btn') };
             Object.values(btns).forEach(b => b.disabled = true);
-
             if (lastCompleted === 'NONE') btns['AM-IN'].disabled = false;
             else if (lastCompleted === 'AM-IN') btns['AM-OUT'].disabled = false;
             else if (lastCompleted === 'AM-OUT') btns['PM-IN'].disabled = false;
             else if (lastCompleted === 'PM-IN') btns['PM-OUT'].disabled = false;
-            
             setStatus(completedCount === 4 ? 'Day Complete' : 'Ready to Scan', completedCount === 4 ? 'success' : 'info');
         };
 
-        const saveProgress = (action) => {
+        const saveProgress = (action, labelSuffix = "") => {
             const today = getLocalDate();
             let stateData = JSON.parse(localStorage.getItem('kctec_daily_state') || '{}');
-            
-            const timeStr = new Date().toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
-                minute: '2-digit', 
-                hour12: true 
-            });
-            
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) + labelSuffix;
             stateData.history[action] = timeStr;
             stateData.date = today;
             localStorage.setItem('kctec_daily_state', JSON.stringify(stateData));
             updateUI(); 
+        };
+
+        // --- NEW: SKIP SCAN LOGIC ---
+        const confirmSkip = () => {
+            // Find current active session
+            let activeAction = 'AM-IN';
+            const stateData = JSON.parse(localStorage.getItem('kctec_daily_state') || '{}');
+            const history = stateData.history || {};
+            const sequence = ['AM-IN', 'AM-OUT', 'PM-IN', 'PM-OUT'];
+            for(let key of sequence) {
+                if(!history[key]) { activeAction = key; break; }
+            }
+            
+            if(Object.keys(history).length >= 4) {
+                showModal('Finished', 'All sessions are already complete.');
+                return;
+            }
+
+            document.getElementById('modal-title').textContent = "Skip " + activeAction.replace('-',' ');
+            document.getElementById('modal-message').textContent = "Are you sure you want to skip this session? This will be recorded as 'SKIPPED'.";
+            document.getElementById('modal-input-container').classList.add('hidden');
+            document.getElementById('modal-image-container').classList.add('hidden');
+            document.getElementById('modal-cancel-btn').classList.remove('hidden');
+            
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.textContent = "Yes, Skip";
+            confirmBtn.onclick = () => performSkip(activeAction);
+
+            const m = document.getElementById('custom-modal');
+            m.classList.remove('opacity-0', 'pointer-events-none');
+            m.querySelector('div').classList.remove('scale-95');
+        };
+
+        const performSkip = async (action) => {
+            closeModal();
+            toggleLoading(true);
+            const res = await syncToSheets('log_entry', { staffId: currentUser.id, staffName: currentUser.name, type: action + " (SKIPPED)", dist: 0 });
+            toggleLoading(true); // Ensure stays shown until update
+            if (res.success) {
+                saveProgress(action, " (S)"); // (S) for skipped
+                showModal('Skipped', `Session ${action} has been skipped.`);
+            } else {
+                showModal('Sync Error', 'Could not skip session. Please check connection.');
+            }
+            toggleLoading(false);
         };
 
         const syncToSheets = async (action, data) => {
@@ -349,12 +370,7 @@
             const timeoutId = setTimeout(() => controller.abort(), SYNC_TIMEOUT_MS);
             try {
                 const payload = { action, ...data, deviceId: currentUser.deviceId, timestamp: new Date().toISOString() };
-                await fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
-                });
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload), signal: controller.signal });
                 return { success: true };
             } catch (e) {
                 return { success: false, error: e.name === 'AbortError' ? 'Timeout' : 'Network' };
@@ -364,7 +380,6 @@
         };
 
         const initiateScan = (action) => { currentAction = action; startScan(); };
-
         const startScan = () => {
             if (scanning) return;
             qrScanner = new Html5Qrcode("reader");
@@ -375,16 +390,9 @@
                 document.getElementById('cancel-control').classList.remove('hidden-section');
             }).catch(() => setStatus('Camera Error', 'error'));
         };
-
         const stopScan = async () => {
-            if (qrScanner && scanning) {
-                await qrScanner.stop();
-                scanning = false;
-                document.getElementById('controls-wrapper').classList.remove('hidden-section');
-                document.getElementById('cancel-control').classList.add('hidden-section');
-            }
+            if (qrScanner && scanning) { await qrScanner.stop(); scanning = false; document.getElementById('controls-wrapper').classList.remove('hidden-section'); document.getElementById('cancel-control').classList.add('hidden-section'); }
         };
-
         const handleScanSuccess = async (text) => {
             await stopScan();
             toggleLoading(true);
@@ -392,42 +400,27 @@
                 const parts = text.split('|');
                 if (parts.length < 4) throw new Error('Invalid QR');
                 const qr = { lat: parseFloat(parts[1]), lon: parseFloat(parts[2]), radius: parseInt(parts[3]) };
-
                 navigator.geolocation.getCurrentPosition(async (pos) => {
                     const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, qr.lat, qr.lon);
-                    if (dist > qr.radius) {
-                        toggleLoading(false);
-                        showModal('Out of Range', `Distance: ${Math.round(dist)}m. Limit: ${qr.radius}m.`);
-                        return;
-                    }
-                    
+                    if (dist > qr.radius) { toggleLoading(false); showModal('Out of Range', `Dist: ${Math.round(dist)}m. Limit: ${qr.radius}m.`); return; }
                     const res = await syncToSheets('log_entry', { staffId: currentUser.id, staffName: currentUser.name, type: currentAction, dist: Math.round(dist) });
                     toggleLoading(false);
-                    
-                    if (res.success) {
-                        saveProgress(currentAction);
-                        showModal('Success', `${currentAction} saved.`);
-                    } else {
-                        showModal('Sync Error', 'Check internet and try again.');
-                    }
-                }, () => { toggleLoading(false); showModal('GPS Error', 'Enable location services.'); }, { enableHighAccuracy: true, timeout: 8000 });
+                    if (res.success) { saveProgress(currentAction); showModal('Success', `${currentAction} saved.`); }
+                    else { showModal('Sync Error', 'Try again.'); }
+                }, () => { toggleLoading(false); showModal('GPS Error', 'Enable GPS.'); }, { enableHighAccuracy: true, timeout: 8000 });
             } catch (err) { toggleLoading(false); showModal('Error', err.message); }
         };
 
         const haversineDistance = (lat1, lon1, lat2, lon2) => {
             const R = 6371e3;
-            const p1 = lat1 * Math.PI / 180, p2 = lat2 * Math.PI / 180;
-            const dp = (lat2 - lat1) * Math.PI / 180, dl = (lon2 - lon1) * Math.PI / 180;
+            const p1 = lat1 * Math.PI/180, p2 = lat2 * Math.PI/180, dp = (lat2-lat1)*Math.PI/180, dl = (lon2-lon1)*Math.PI/180;
             const a = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         };
 
         const setStatus = (msg, type) => {
             const el = document.getElementById('status-message');
-            if (el) {
-                el.textContent = msg;
-                el.className = `text-sm font-medium ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`;
-            }
+            if (el) { el.textContent = msg; el.className = `text-sm font-medium ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`; }
         };
 
         const showModal = (title, message) => {
@@ -444,16 +437,10 @@
             m.querySelector('div').classList.remove('scale-95');
         };
 
-        const closeModal = () => {
-            const m = document.getElementById('custom-modal');
-            m.classList.add('opacity-0', 'pointer-events-none');
-            m.querySelector('div').classList.add('scale-95');
-        };
-
+        const closeModal = () => { const m = document.getElementById('custom-modal'); m.classList.add('opacity-0', 'pointer-events-none'); m.querySelector('div').classList.add('scale-95'); };
         const viewQR = () => {
-            document.getElementById('modal-title').textContent = "KC-TEC Check-In QR";
+            document.getElementById('modal-title').textContent = "Check-In QR";
             document.getElementById('modal-message').textContent = "";
-            document.getElementById('modal-input-container').classList.add('hidden');
             document.getElementById('modal-image-container').classList.remove('hidden');
             document.getElementById('modal-cancel-btn').classList.add('hidden');
             const confirmBtn = document.getElementById('modal-confirm-btn');
@@ -469,24 +456,15 @@
 
         const requestReset = () => {
             document.getElementById('modal-title').textContent = "Admin Reset";
-            document.getElementById('modal-message').textContent = "Enter supervisor PIN:";
+            document.getElementById('modal-message').textContent = "Enter PIN:";
             document.getElementById('modal-input-container').classList.remove('hidden');
-            document.getElementById('modal-image-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.remove('hidden');
             document.getElementById('modal-input').value = "";
             const confirmBtn = document.getElementById('modal-confirm-btn');
-            confirmBtn.textContent = "Reset Device";
-            confirmBtn.onclick = () => {
-                if (document.getElementById('modal-input').value === ADMIN_RESET_PIN) {
-                    localStorage.clear();
-                    window.location.reload();
-                } else {
-                    showModal('Error', 'Wrong PIN');
-                }
-            };
+            confirmBtn.textContent = "Reset";
+            confirmBtn.onclick = () => { if (document.getElementById('modal-input').value === ADMIN_RESET_PIN) { localStorage.clear(); window.location.reload(); } else { showModal('Error', 'Wrong PIN'); } };
             const m = document.getElementById('custom-modal');
             m.classList.remove('opacity-0', 'pointer-events-none');
-            m.querySelector('div').classList.remove('scale-95');
         };
 
         document.getElementById('leave-form').addEventListener('submit', async (e) => {
@@ -494,16 +472,13 @@
             const btn = document.getElementById('submit-leave-btn');
             btn.disabled = true; btn.textContent = "Syncing...";
             await syncToSheets('leave_request', { staffId: currentUser.id, staffName: currentUser.name, type: document.getElementById('leave-type').value, start: document.getElementById('leave-start-date').value, end: document.getElementById('leave-end-date').value, reason: document.getElementById('leave-reason').value });
-            btn.disabled = false; btn.textContent = "Submit to Sheet";
+            btn.disabled = false; btn.textContent = "Submit Request";
             showModal('Success', 'Request sent.');
             toggleLeaveForm();
             e.target.reset();
         });
 
-        window.onload = () => {
-            const saved = localStorage.getItem('kctec_checkin_user');
-            if (saved) { currentUser = JSON.parse(saved); showApp(); }
-        };
+        window.onload = () => { const saved = localStorage.getItem('kctec_checkin_user'); if (saved) { currentUser = JSON.parse(saved); showApp(); } };
     </script>
 </body>
 </html>
