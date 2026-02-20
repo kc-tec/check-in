@@ -172,7 +172,8 @@
                     </button>
                 </div>
                 <div class="mt-6 flex flex-col space-y-2">
-                    <button onclick="toggleLeaveForm()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-xs">Request Leave</button>
+                    <!-- Button to trigger pop-up form -->
+                    <button onclick="openLeaveModal()" id="leave-toggle-btn" class="w-full py-2 bg-gray-100 text-indigo-700 font-semibold rounded-lg hover:bg-gray-200 transition text-xs">Request Leave</button>
                     
                     <div class="grid grid-cols-2 gap-2">
                         <button onclick="viewQR()" class="py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg border border-indigo-200 hover:bg-indigo-100 transition text-xs flex items-center justify-center">
@@ -191,52 +192,53 @@
         <div id="cancel-control" class="mt-6 hidden-section">
             <button onclick="stopScan()" class="w-full px-4 py-3 bg-red-500 text-white font-semibold rounded-lg shadow-md hover:bg-red-600 transition">Cancel / Stop Scanner</button>
         </div>
-
-        <!-- Leave Form -->
-        <div id="leave-form-container" class="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50 hidden-section">
-            <h2 class="text-lg font-semibold text-gray-700 mb-4">Leave Request</h2>
-            <form id="leave-form">
-                <div class="mb-3">
-                    <label class="block text-sm font-medium text-gray-700">Category</label>
-                    <select id="leave-type" name="type" required class="mt-1 w-full p-2 border border-gray-300 rounded-md text-sm">
-                        <option value="Annual">Annual Leave</option>
-                        <option value="Sick">Sick Leave</option>
-                        <option value="Emergency">Emergency / Unpaid</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="flex space-x-3 mb-3">
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700">Start</label>
-                        <input type="date" id="leave-start-date" required class="mt-1 w-full p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                    <div class="flex-1">
-                        <label class="block text-sm font-medium text-gray-700">End</label>
-                        <input type="date" id="leave-end-date" required class="mt-1 w-full p-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700">Reason</label>
-                    <textarea id="leave-reason" rows="3" required class="mt-1 w-full p-2 border border-gray-300 rounded-md text-sm"></textarea>
-                </div>
-                <button type="submit" id="submit-leave-btn" class="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 text-sm">Submit Request</button>
-            </form>
-        </div>
     </div>
 
     <!-- Modal System -->
     <div id="custom-modal" class="modal fixed inset-0 bg-gray-900/75 flex items-center justify-center p-4 z-50 pointer-events-none opacity-0">
-        <div class="bg-white rounded-xl p-6 shadow-2xl w-full max-w-xs transform transition-all scale-95">
+        <div class="bg-white rounded-xl p-6 shadow-2xl w-full max-w-sm transform transition-all scale-95">
             <h3 id="modal-title" class="text-xl font-bold mb-3 text-gray-800">Notification</h3>
             <p id="modal-message" class="text-gray-600 mb-4 text-sm"></p>
             
+            <!-- View QR Image Container -->
             <div id="modal-image-container" class="hidden mb-4 overflow-hidden rounded-lg text-center">
                 <img id="modal-qr-img" src="qrcode.jpg" class="w-full h-auto mx-auto" alt="QR Code" onerror="this.src='https://placehold.co/400x400?text=QR+Image+Missing'">
             </div>
 
+            <!-- PIN Input Container -->
             <div id="modal-input-container" class="hidden mb-4">
-                <input type="password" id="modal-input" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Enter PIN">
+                <input type="password" id="modal-input" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500" placeholder="Enter PIN">
             </div>
+
+            <!-- Leave Form Container -->
+            <div id="modal-leave-container" class="hidden mb-4 text-left">
+                <form id="leave-form">
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Category</label>
+                        <select id="leave-type" name="type" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-md text-sm">
+                            <option value="Annual">Annual Leave</option>
+                            <option value="Sick">Sick Leave</option>
+                            <option value="Emergency">Emergency / Unpaid</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Start</label>
+                            <input type="date" id="leave-start-date" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-md text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">End</label>
+                            <input type="date" id="leave-end-date" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-md text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Reason / Note</label>
+                        <textarea id="leave-reason" rows="3" required class="w-full p-2 bg-gray-50 border border-gray-200 rounded-md text-sm" placeholder="Please provide details..."></textarea>
+                    </div>
+                </form>
+            </div>
+
             <div class="flex space-x-2">
                 <button id="modal-cancel-btn" onclick="closeModal()" class="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg font-medium hidden text-sm">Cancel</button>
                 <button id="modal-confirm-btn" onclick="closeModal()" class="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm">OK</button>
@@ -256,17 +258,13 @@
 
         const getLocalDate = () => new Date().toLocaleDateString('en-CA'); 
 
-        // --- BROWSER DETECTION LOGIC ---
         const checkBrowser = () => {
             const ua = navigator.userAgent;
             const isChrome = /Chrome/.test(ua) || /CriOS/.test(ua);
             const isSafari = /Safari/.test(ua) && !isChrome;
             const isEdge = /Edg/.test(ua);
             const isOpera = /OPR/.test(ua);
-
-            // Allow Safari or Chrome (excluding Edge/Opera which might identify as Chrome)
             const isSupported = (isChrome && !isEdge && !isOpera) || isSafari;
-
             if (!isSupported) {
                 document.getElementById('browser-lock').classList.remove('hidden');
                 return false;
@@ -360,15 +358,10 @@
             const stateData = JSON.parse(localStorage.getItem('kctec_daily_state') || '{}');
             const history = stateData.history || {};
             const sequence = ['AM-IN', 'AM-OUT', 'PM-IN', 'PM-OUT'];
-            for(let key of sequence) {
-                if(!history[key]) { activeAction = key; break; }
-            }
+            for(let key of sequence) { if(!history[key]) { activeAction = key; break; } }
             if(Object.keys(history).length >= 4) { showModal('Finished', 'All sessions are complete.'); return; }
-
             document.getElementById('modal-title').textContent = "Skip " + activeAction.replace('-',' ');
             document.getElementById('modal-message').textContent = "Record this session as 'SKIPPED'?";
-            document.getElementById('modal-input-container').classList.add('hidden');
-            document.getElementById('modal-image-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.remove('hidden');
             const confirmBtn = document.getElementById('modal-confirm-btn');
             confirmBtn.textContent = "Yes, Skip";
@@ -381,19 +374,9 @@
         const performSkip = async (action) => {
             closeModal();
             toggleLoading(true);
-            const res = await syncToSheets('log_entry', { 
-                staffId: currentUser.id, 
-                staffName: currentUser.name, 
-                storeId: "SKIPPED", 
-                type: action + " (SKIPPED)", 
-                dist: 0 
-            });
-            if (res.success) {
-                saveProgress(action, " (S)");
-                showModal('Skipped', `Session ${action} has been skipped.`);
-            } else {
-                showModal('Sync Error', 'Could not skip. Check connection.');
-            }
+            const res = await syncToSheets('log_entry', { staffId: currentUser.id, staffName: currentUser.name, storeId: "SKIPPED", type: action + " (SKIPPED)", dist: 0 });
+            if (res.success) { saveProgress(action, " (S)"); showModal('Skipped', `Session ${action} has been skipped.`); }
+            else { showModal('Sync Error', 'Check connection.'); }
             toggleLoading(false);
         };
 
@@ -404,11 +387,7 @@
                 const payload = { action, ...data, deviceId: currentUser.deviceId, timestamp: new Date().toISOString() };
                 await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload), signal: controller.signal });
                 return { success: true };
-            } catch (e) {
-                return { success: false, error: e.name === 'AbortError' ? 'Timeout' : 'Network' };
-            } finally {
-                clearTimeout(timeoutId);
-            }
+            } catch (e) { return { success: false, error: e.name === 'AbortError' ? 'Timeout' : 'Network' }; } finally { clearTimeout(timeoutId); }
         };
 
         const initiateScan = (action) => { currentAction = action; startScan(); };
@@ -422,9 +401,7 @@
                 document.getElementById('cancel-control').classList.remove('hidden-section');
             }).catch(() => setStatus('Camera Error', 'error'));
         };
-        const stopScan = async () => {
-            if (qrScanner && scanning) { await qrScanner.stop(); scanning = false; document.getElementById('controls-wrapper').classList.remove('hidden-section'); document.getElementById('cancel-control').classList.add('hidden-section'); }
-        };
+        const stopScan = async () => { if (qrScanner && scanning) { await qrScanner.stop(); scanning = false; document.getElementById('controls-wrapper').classList.remove('hidden-section'); document.getElementById('cancel-control').classList.add('hidden-section'); } };
 
         const handleScanSuccess = async (text) => {
             await stopScan();
@@ -432,25 +409,11 @@
             try {
                 const parts = text.split('|');
                 if (parts.length < 4) throw new Error('Invalid QR');
-                const qr = { 
-                    storeId: parts[0], 
-                    lat: parseFloat(parts[1]), 
-                    lon: parseFloat(parts[2]), 
-                    radius: parseInt(parts[3]) 
-                };
-                
+                const qr = { storeId: parts[0], lat: parseFloat(parts[1]), lon: parseFloat(parts[2]), radius: parseInt(parts[3]) };
                 navigator.geolocation.getCurrentPosition(async (pos) => {
                     const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, qr.lat, qr.lon);
                     if (dist > qr.radius) { toggleLoading(false); showModal('Out of Range', `Dist: ${Math.round(dist)}m. Limit: ${qr.radius}m.`); return; }
-                    
-                    const res = await syncToSheets('log_entry', { 
-                        staffId: currentUser.id, 
-                        staffName: currentUser.name, 
-                        storeId: qr.storeId, 
-                        type: currentAction, 
-                        dist: Math.round(dist) 
-                    });
-                    
+                    const res = await syncToSheets('log_entry', { staffId: currentUser.id, staffName: currentUser.name, storeId: qr.storeId, type: currentAction, dist: Math.round(dist) });
                     toggleLoading(false);
                     if (res.success) { saveProgress(currentAction); showModal('Success', `${currentAction} saved.`); }
                     else { showModal('Sync Error', 'Try again.'); }
@@ -465,16 +428,14 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         };
 
-        const setStatus = (msg, type) => {
-            const el = document.getElementById('status-message');
-            if (el) { el.textContent = msg; el.className = `text-sm font-medium ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`; }
-        };
+        const setStatus = (msg, type) => { const el = document.getElementById('status-message'); if (el) { el.textContent = msg; el.className = `text-sm font-medium ${type === 'error' ? 'text-red-600' : 'text-blue-600'}`; } };
 
         const showModal = (title, message) => {
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-message').textContent = message;
             document.getElementById('modal-input-container').classList.add('hidden');
             document.getElementById('modal-image-container').classList.add('hidden');
+            document.getElementById('modal-leave-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.add('hidden');
             const confirmBtn = document.getElementById('modal-confirm-btn');
             confirmBtn.textContent = "OK";
@@ -484,11 +445,26 @@
             m.querySelector('div').classList.remove('scale-95');
         };
 
-        const closeModal = () => { const m = document.getElementById('custom-modal'); m.classList.add('opacity-0', 'pointer-events-none'); m.querySelector('div').classList.add('scale-95'); };
+        const closeModal = () => {
+            const m = document.getElementById('custom-modal');
+            m.classList.add('opacity-0', 'pointer-events-none');
+            m.querySelector('div').classList.add('scale-95');
+            // CLEAN RESET of modal contents
+            setTimeout(() => {
+                document.getElementById('modal-input-container').classList.add('hidden');
+                document.getElementById('modal-image-container').classList.add('hidden');
+                document.getElementById('modal-leave-container').classList.add('hidden');
+                document.getElementById('modal-cancel-btn').classList.add('hidden');
+                document.getElementById('modal-message').textContent = "";
+            }, 300);
+        };
+
         const viewQR = () => {
             document.getElementById('modal-title').textContent = "Check-In QR";
             document.getElementById('modal-message').textContent = "";
             document.getElementById('modal-image-container').classList.remove('hidden');
+            document.getElementById('modal-input-container').classList.add('hidden');
+            document.getElementById('modal-leave-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.add('hidden');
             const confirmBtn = document.getElementById('modal-confirm-btn');
             confirmBtn.textContent = "Close";
@@ -498,14 +474,70 @@
             m.querySelector('div').classList.remove('scale-95');
         };
 
+        // NEW: Open Leave Form Modal
+        const openLeaveModal = () => {
+            document.getElementById('modal-title').textContent = "Leave Request";
+            document.getElementById('modal-message').textContent = "";
+            document.getElementById('modal-image-container').classList.add('hidden');
+            document.getElementById('modal-input-container').classList.add('hidden');
+            document.getElementById('modal-leave-container').classList.remove('hidden');
+            document.getElementById('modal-cancel-btn').classList.remove('hidden');
+            
+            // Setup Dates
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('leave-start-date').value = todayStr;
+            document.getElementById('leave-end-date').value = todayStr;
+
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.textContent = "Submit Request";
+            confirmBtn.onclick = submitLeaveRequest;
+
+            const m = document.getElementById('custom-modal');
+            m.classList.remove('opacity-0', 'pointer-events-none');
+            m.querySelector('div').classList.remove('scale-95');
+        };
+
+        const submitLeaveRequest = async () => {
+            const type = document.getElementById('leave-type').value;
+            const start = document.getElementById('leave-start-date').value;
+            const end = document.getElementById('leave-end-date').value;
+            const reason = document.getElementById('leave-reason').value;
+
+            if (!reason) {
+                // Keep modal open but show a small error or focus
+                document.getElementById('leave-reason').focus();
+                return;
+            }
+
+            closeModal();
+            toggleLoading(true);
+            
+            const res = await syncToSheets('leave_request', { 
+                staffId: currentUser.id, 
+                staffName: currentUser.name, 
+                type, 
+                start, 
+                end, 
+                reason 
+            });
+
+            toggleLoading(false);
+            if (res.success) {
+                showModal('Success', 'Your leave request has been submitted.');
+                document.getElementById('leave-form').reset();
+            } else {
+                showModal('Error', 'Failed to submit request. Check connection.');
+            }
+        };
+
         const toggleLoading = (show) => document.getElementById('loading-spinner').classList.toggle('hidden', !show);
-        const toggleLeaveForm = () => document.getElementById('leave-form-container').classList.toggle('hidden-section');
 
         const requestReset = () => {
             document.getElementById('modal-title').textContent = "Admin Reset";
             document.getElementById('modal-message').textContent = "Enter PIN:";
             document.getElementById('modal-input-container').classList.remove('hidden');
             document.getElementById('modal-image-container').classList.add('hidden');
+            document.getElementById('modal-leave-container').classList.add('hidden');
             document.getElementById('modal-cancel-btn').classList.remove('hidden');
             document.getElementById('modal-input').value = "";
             const confirmBtn = document.getElementById('modal-confirm-btn');
@@ -513,24 +545,10 @@
             confirmBtn.onclick = () => { if (document.getElementById('modal-input').value === ADMIN_RESET_PIN) { localStorage.clear(); window.location.reload(); } else { showModal('Error', 'Wrong PIN'); } };
             const m = document.getElementById('custom-modal');
             m.classList.remove('opacity-0', 'pointer-events-none');
+            m.querySelector('div').classList.remove('scale-95');
         };
 
-        document.getElementById('leave-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('submit-leave-btn');
-            btn.disabled = true; btn.textContent = "Syncing...";
-            await syncToSheets('leave_request', { staffId: currentUser.id, staffName: currentUser.name, type: document.getElementById('leave-type').value, start: document.getElementById('leave-start-date').value, end: document.getElementById('leave-end-date').value, reason: document.getElementById('leave-reason').value });
-            btn.disabled = false; btn.textContent = "Submit Request";
-            showModal('Success', 'Request sent.');
-            toggleLeaveForm();
-            e.target.reset();
-        });
-
-        window.onload = () => { 
-            if (!checkBrowser()) return; // Stop execution if browser is blocked
-            const saved = localStorage.getItem('kctec_checkin_user'); 
-            if (saved) { currentUser = JSON.parse(saved); showApp(); } 
-        };
+        window.onload = () => { if (!checkBrowser()) return; const saved = localStorage.getItem('kctec_checkin_user'); if (saved) { currentUser = JSON.parse(saved); showApp(); } };
     </script>
 </body>
 </html>
